@@ -125,6 +125,11 @@ To make the site accessible from any device, the simplest setup is:
 - backend on Render
 - database on MongoDB Atlas
 
+This repo now includes:
+
+- [render.yaml](/Users/deekondasunidhi/Desktop/medgpt/render.yaml:1) for the backend service setup on Render
+- [vercel.json](/Users/deekondasunidhi/Desktop/medgpt/medgpt-frontend/vercel.json:1) so React Router routes work correctly on Vercel
+
 ### Deploy backend on Render
 
 1. Push this repo to GitHub.
