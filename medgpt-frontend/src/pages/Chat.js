@@ -157,7 +157,12 @@ function ChatScreen({
   }, []);
 
   const parseBotText = (text) => {
-    const cleanedText = (text || "").replace(/\*/g, "").trim();
+    const cleanedText = String(text || "")
+      .replace(/\*/g, "")
+      .replace(/\r/g, "")
+      .replace(/(Summary|Possible Causes|Risk Level|Suggested Actions|Warning Signs)\s*:\s*[-.]*\s*/gi, "\n$1:\n")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
     const lines = cleanedText
       .split("\n")
       .map((line) => line.trim())
@@ -167,10 +172,20 @@ function ChatScreen({
     let introLines = [];
     let question = "";
     let currentSection = null;
+    let disclaimer = "";
+
+    const isDisclaimerLine = (line) =>
+      /not a medical diagnosis/i.test(line) ||
+      /not a replacement for emergency care/i.test(line);
 
     lines.forEach((line) => {
-      const headingMatch = line.match(/^([A-Z][A-Za-z\s]+):$/);
-      const bulletMatch = line.match(/^-\s+(.+)$/);
+      const headingMatch = line.match(/^(Summary|Possible Causes|Risk Level|Suggested Actions|Warning Signs):\s*(.*)$/i);
+      const bulletMatch = line.match(/^[-•]\s+(.+)$/);
+
+      if (isDisclaimerLine(line)) {
+        disclaimer = line;
+        return;
+      }
 
       if (headingMatch) {
         if (currentSection) sections.push(currentSection);
@@ -179,6 +194,11 @@ function ChatScreen({
           items: [],
           content: [],
         };
+
+        const trailingContent = headingMatch[2]?.trim().replace(/^[-.]+/, "").trim();
+        if (trailingContent) {
+          currentSection.content.push(trailingContent);
+        }
         return;
       }
 
@@ -200,19 +220,40 @@ function ChatScreen({
 
     if (currentSection) sections.push(currentSection);
 
+    if (disclaimer) {
+      const warningSection = sections.find(
+        (section) => section.title.toLowerCase() === "warning signs"
+      );
+
+      if (warningSection) {
+        warningSection.content.unshift(disclaimer);
+      } else if (sections.length > 0) {
+        sections.push({
+          title: "Warning Signs",
+          items: [],
+          content: [disclaimer],
+        });
+      }
+    }
+
     return {
       introLines,
       sections,
       question,
+      disclaimer,
       hasStructuredSections: sections.length > 0,
     };
   };
+
+  const isStructuredBotMessage = (text) => parseBotText(text).hasStructuredSections;
 
   const renderSection = (section) => {
     const normalizedTitle = section.title.toLowerCase();
 
     if (normalizedTitle === "risk level") {
-      const riskValue = section.content[0] || section.items[0] || "Unknown";
+      const riskValue = (section.content[0] || section.items[0] || "Unknown")
+        .replace(/[.]+$/, "")
+        .trim();
       const riskClass = `risk-pill risk-${riskValue.toLowerCase()}`;
 
       return (
@@ -228,16 +269,23 @@ function ChatScreen({
         <div className="section-heading">{section.title}</div>
 
         {section.content.map((line, index) => (
-          <div className="line" key={`${section.title}-content-${index}`}>
+          <div
+            className={`line ${/not a medical diagnosis/i.test(line) ? "line-disclaimer" : ""}`}
+            key={`${section.title}-content-${index}`}
+          >
             {line}
           </div>
         ))}
 
-        {section.items.map((item, index) => (
-          <div className="point" key={`${section.title}-item-${index}`}>
-            • {item}
+        {section.items.length > 0 && (
+          <div className="points-group">
+            {section.items.map((item, index) => (
+              <div className="point" key={`${section.title}-item-${index}`}>
+                {item}
+              </div>
+            ))}
           </div>
-        ))}
+        )}
       </div>
     );
   };
@@ -247,11 +295,12 @@ function ChatScreen({
 
     return (
       <>
-        {parsed.introLines.map((line, index) => (
-          <div className="line" key={`intro-${index}`}>
-            {line}
-          </div>
-        ))}
+        {!parsed.hasStructuredSections &&
+          parsed.introLines.map((line, index) => (
+            <div className="line" key={`intro-${index}`}>
+              {line}
+            </div>
+          ))}
 
         {parsed.hasStructuredSections && (
           <div className="structured-response">
@@ -655,7 +704,14 @@ function ChatScreen({
             )}
 
             {messages.map((msg, index) => (
-              <div key={index} className={msg.sender === "user" ? "user-msg" : "bot-msg"}>
+              <div
+                key={index}
+                className={
+                  msg.sender === "user"
+                    ? "user-msg"
+                    : `bot-msg ${isStructuredBotMessage(msg.text) ? "bot-msg-structured" : ""}`
+                }
+              >
                 {msg.sender === "bot" ? renderBotMessage(msg.text) : msg.text}
               </div>
             ))}
