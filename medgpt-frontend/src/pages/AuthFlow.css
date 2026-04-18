@@ -1,0 +1,106 @@
+@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600;700&display=swap");
+
+.auth-flow-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at top left, rgba(56, 189, 248, 0.24), transparent 30%),
+    radial-gradient(circle at bottom right, rgba(34, 197, 94, 0.24), transparent 28%),
+    linear-gradient(140deg, #dbeafe, #ecfeff 42%, #d1fae5);
+  font-family: "Inter", sans-serif;
+}
+
+.auth-flow-card {
+  width: min(520px, calc(100vw - 32px));
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(18px);
+  border-radius: 28px;
+  padding: 32px;
+  border: 1px solid rgba(255, 255, 255, 0.56);
+  box-shadow: 0 26px 60px rgba(15, 23, 42, 0.12);
+}
+
+.auth-flow-eyebrow {
+  margin: 0 0 10px;
+  color: #0ea5e9;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+.auth-flow-card h1 {
+  margin: 0;
+  color: #12302b;
+  font-size: 2rem;
+}
+
+.auth-flow-copy {
+  margin: 12px 0 24px;
+  color: #516171;
+  line-height: 1.65;
+}
+
+.auth-flow-input {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-radius: 16px;
+  background: white;
+  border: 1px solid rgba(56, 189, 248, 0.16);
+  padding: 14px 16px;
+  margin-bottom: 16px;
+}
+
+.auth-flow-input input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 14px;
+}
+
+.auth-flow-eye {
+  color: #0f766e;
+  cursor: pointer;
+}
+
+.auth-flow-btn,
+.auth-flow-secondary {
+  width: 100%;
+  border: none;
+  border-radius: 999px;
+  padding: 13px 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.auth-flow-btn {
+  color: white;
+  background: linear-gradient(135deg, #0ea5e9, #22c55e);
+  box-shadow: 0 14px 30px rgba(14, 165, 233, 0.18);
+}
+
+.auth-flow-secondary {
+  margin-top: 12px;
+  color: #12302b;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(14, 165, 233, 0.18);
+}
+
+.auth-flow-btn:hover,
+.auth-flow-secondary:hover {
+  transform: translateY(-1px);
+}
+
+.auth-flow-link {
+  margin: 18px 0 0;
+  text-align: center;
+  color: #0ea5e9;
+  font-weight: 600;
+  cursor: pointer;
+}
