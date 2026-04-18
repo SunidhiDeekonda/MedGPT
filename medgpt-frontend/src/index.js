@@ -1,14 +1,29 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
+import { ClerkProvider } from "@clerk/clerk-react";
 import "./index.css";
 import App from "./App";
+import { clerkAppearance } from "./clerkAppearance";
 import reportWebVitals from "./reportWebVitals";
 
+const clerkPublishableKey = process.env.REACT_APP_CLERK_PUBLISHABLE_KEY;
 const root = ReactDOM.createRoot(document.getElementById("root"));
+
+const app = <App />;
 
 root.render(
   <React.StrictMode>
-    <App />
+    {clerkPublishableKey ? (
+      <ClerkProvider
+        afterSignOutUrl="/"
+        appearance={clerkAppearance}
+        publishableKey={clerkPublishableKey}
+      >
+        {app}
+      </ClerkProvider>
+    ) : (
+      app
+    )}
   </React.StrictMode>
 );
 

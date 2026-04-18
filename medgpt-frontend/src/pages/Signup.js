@@ -1,10 +1,14 @@
 import { useState } from "react";
 import axios from "axios";
+import { SignedIn, SignedOut, SignUpButton, UserButton } from "@clerk/clerk-react";
 import { useNavigate } from "react-router-dom";
 import { FaUser, FaEnvelope, FaLock, FaEye, FaEyeSlash } from "react-icons/fa";
+import { FcGoogle } from "react-icons/fc";
 import toast from "react-hot-toast";
 import { API_BASE_URL } from "../config";
 import "./Signup.css";
+
+const hasClerk = Boolean(process.env.REACT_APP_CLERK_PUBLISHABLE_KEY);
 
 function Signup() {
   const navigate = useNavigate();
@@ -63,7 +67,7 @@ function Signup() {
       <h1 className="logo">MedGPT</h1>
       <h2 className="heading">Create Your Account</h2>
       <p className="subtext">
-        Create an account with your email and password to start chatting with MedGPT.
+        Create an account with your email and password or use Google for a quicker start.
       </p>
 
       <div className="auth-card">
@@ -114,6 +118,42 @@ function Signup() {
               Already have an account? <span onClick={() => navigate("/")}>Login</span>
             </p>
           </div>
+
+          {hasClerk && (
+            <>
+              <div className="auth-divider">
+                <span>OR</span>
+              </div>
+
+              <div className="auth-panel social-panel">
+                <h3 className="panel-title">Create with Google</h3>
+                <p className="panel-copy">
+                  Choose Google if you want a faster sign-up with one click.
+                </p>
+
+                <SignedOut>
+                  <SignUpButton
+                    mode="modal"
+                    forceRedirectUrl="/chat"
+                    oauthFlow="popup"
+                    strategy="oauth_google"
+                  >
+                    <button className="google-btn">
+                      <FcGoogle className="google-icon" />
+                      Create with Google
+                    </button>
+                  </SignUpButton>
+                </SignedOut>
+
+                <SignedIn>
+                  <div className="auth-state">
+                    <UserButton afterSignOutUrl="/" />
+                    <p>Your Google account is connected.</p>
+                  </div>
+                </SignedIn>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>

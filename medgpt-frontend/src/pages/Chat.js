@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
+import { useAuth, useClerk, useUser } from "@clerk/clerk-react";
 import {
   FaArrowUp,
   FaMicrophone,
@@ -20,7 +21,18 @@ import {
 } from "../utils/auth";
 import "./Chat.css";
 
-function Chat() {
+const hasClerk = Boolean(process.env.REACT_APP_CLERK_PUBLISHABLE_KEY);
+
+function ChatScreen({
+  authReady,
+  isAuthenticated,
+  getAuthHeaders,
+  onUnauthorized,
+  onLogout,
+  onOpenProfile,
+  showProfileShortcut,
+  userName,
+}) {
   const [chatHistory, setChatHistory] = useState([]);
   const [currentChatId, setCurrentChatId] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -41,41 +53,10 @@ function Chat() {
   const recognitionRef = useRef(null);
   const chatEndRef = useRef(null);
   const searchTimeoutRef = useRef(null);
-  const navigate = useNavigate();
-  const jwtUser = getStoredUser();
-  const jwtToken = getStoredToken();
-  const userName = jwtUser?.name || jwtUser?.email?.split("@")[0] || "";
-
   const currentChatTitle = useMemo(() => {
     const activeChat = chatHistory.find((chat) => chat.id === currentChatId);
     return activeChat?.title || activeMeta.titleSuggestion || "New consultation";
   }, [activeMeta.titleSuggestion, chatHistory, currentChatId]);
-
-  const handleJwtLogout = useCallback(
-    (message = "Your session has expired. Please log in again.") => {
-      clearStoredAuth();
-      toast.error(message);
-      navigate("/");
-    },
-    [navigate]
-  );
-
-  const getAuthHeaders = useCallback(async () => {
-    if (jwtToken) {
-      if (isJwtExpired(jwtToken)) {
-        handleJwtLogout();
-        throw new Error("JWT_EXPIRED");
-      }
-
-      return {
-        Authorization: `Bearer ${jwtToken}`,
-        "Content-Type": "application/json",
-      };
-    }
-
-    handleJwtLogout("Please log in to continue.");
-    throw new Error("JWT_EXPIRED");
-  }, [handleJwtLogout, jwtToken]);
 
   const getChatTitle = useCallback((firstMessage, suggestion) => {
     const source = (suggestion || firstMessage || "").trim();
@@ -119,7 +100,7 @@ function Chat() {
         });
 
         if (res.status === 401) {
-          handleJwtLogout("Please log in again to access your chats.");
+          onUnauthorized("Please log in again to access your chats.");
           return;
         }
 
@@ -145,23 +126,21 @@ function Chat() {
         setChatHistory([]);
       }
     },
-    [getAuthHeaders, getChatTitle, handleJwtLogout, selectedModel]
+    [getAuthHeaders, getChatTitle, onUnauthorized, selectedModel]
   );
 
   useEffect(() => {
-    if (jwtToken && isJwtExpired(jwtToken)) {
-      handleJwtLogout();
+    if (!authReady) {
       return;
     }
 
-    if (!jwtToken) {
-      navigate("/");
+    if (!isAuthenticated) {
       return;
     }
 
     fetchChats();
     fetchModels();
-  }, [fetchChats, fetchModels, handleJwtLogout, jwtToken, navigate]);
+  }, [authReady, fetchChats, fetchModels, isAuthenticated]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -300,7 +279,7 @@ function Chat() {
     });
 
     if (res.status === 401) {
-      handleJwtLogout("Please log in again to save chats.");
+      onUnauthorized("Please log in again to save chats.");
       throw new Error("JWT_EXPIRED");
     }
 
@@ -325,7 +304,7 @@ function Chat() {
     });
 
     if (res.status === 401) {
-      handleJwtLogout("Please log in again to save chats.");
+      onUnauthorized("Please log in again to save chats.");
       throw new Error("JWT_EXPIRED");
     }
 
@@ -340,7 +319,7 @@ function Chat() {
       const res = await fetch(`${API_BASE_URL}/history/${chatId}`, { headers });
 
       if (res.status === 401) {
-        handleJwtLogout("Please log in again to open saved chats.");
+        onUnauthorized("Please log in again to open saved chats.");
         return;
       }
 
@@ -510,12 +489,6 @@ function Chat() {
     });
   };
 
-  const handleLogout = () => {
-    clearStoredAuth();
-    toast.success("You have been logged out.");
-    navigate("/");
-  };
-
   const deleteChat = async (id) => {
     try {
       const headers = await getAuthHeaders();
@@ -525,7 +498,7 @@ function Chat() {
       });
 
       if (res.status === 401) {
-        handleJwtLogout("Please log in again to manage chats.");
+        onUnauthorized("Please log in again to manage chats.");
         return;
       }
 
@@ -558,8 +531,12 @@ function Chat() {
     }, 250);
   };
 
-  if (!jwtToken) {
+  if (authReady && !isAuthenticated) {
     return <Navigate to="/" replace />;
+  }
+
+  if (!authReady) {
+    return null;
   }
 
   return (
@@ -583,10 +560,12 @@ function Chat() {
             <div className="welcome-copy">Your AI health companion is ready whenever you need guidance.</div>
           </div>
 
-          <button className="profile-shortcut" onClick={() => navigate("/profile")}>
-            <FaUserCircle />
-            Profile
-          </button>
+          {showProfileShortcut && (
+            <button className="profile-shortcut" onClick={onOpenProfile}>
+              <FaUserCircle />
+              Profile
+            </button>
+          )}
         </div>
 
         <button className="new-chat-btn" onClick={startNewChat}>
@@ -621,7 +600,7 @@ function Chat() {
           ))}
         </div>
 
-        <button className="logout-btn" onClick={handleLogout}>
+        <button className="logout-btn" onClick={onLogout}>
           <FaSignOutAlt />
           Logout
         </button>
@@ -721,6 +700,141 @@ function Chat() {
       </div>
     </div>
   );
+}
+
+function ChatWithJwtSupport() {
+  const navigate = useNavigate();
+  const jwtUser = getStoredUser();
+  const jwtToken = getStoredToken();
+  const userName = jwtUser?.name || jwtUser?.email?.split("@")[0] || "";
+
+  const handleJwtLogout = useCallback(
+    (message = "Your session has expired. Please log in again.") => {
+      clearStoredAuth();
+      toast.error(message);
+      navigate("/");
+    },
+    [navigate]
+  );
+
+  const getAuthHeaders = useCallback(async () => {
+    if (!jwtToken) {
+      throw new Error("JWT_EXPIRED");
+    }
+
+    if (isJwtExpired(jwtToken)) {
+      handleJwtLogout();
+      throw new Error("JWT_EXPIRED");
+    }
+
+    return {
+      Authorization: `Bearer ${jwtToken}`,
+      "Content-Type": "application/json",
+    };
+  }, [handleJwtLogout, jwtToken]);
+
+  const handleLogout = useCallback(() => {
+    clearStoredAuth();
+    toast.success("You have been logged out.");
+    navigate("/");
+  }, [navigate]);
+
+  return (
+    <ChatScreen
+      authReady
+      isAuthenticated={Boolean(jwtToken)}
+      getAuthHeaders={getAuthHeaders}
+      onUnauthorized={handleJwtLogout}
+      onLogout={handleLogout}
+      onOpenProfile={() => navigate("/profile")}
+      showProfileShortcut
+      userName={userName}
+    />
+  );
+}
+
+function ChatWithClerkSupport() {
+  const navigate = useNavigate();
+  const { isLoaded, isSignedIn, getToken } = useAuth();
+  const { user } = useUser();
+  const { signOut } = useClerk();
+  const jwtUser = getStoredUser();
+  const jwtToken = getStoredToken();
+  const userName =
+    user?.firstName ||
+    user?.fullName ||
+    user?.primaryEmailAddress?.emailAddress?.split("@")[0] ||
+    jwtUser?.name ||
+    jwtUser?.email?.split("@")[0] ||
+    "";
+
+  const handleUnauthorized = useCallback(
+    (message = "Your session has expired. Please log in again.") => {
+      clearStoredAuth();
+      toast.error(message);
+
+      if (isSignedIn) {
+        signOut({ redirectUrl: "/" });
+        return;
+      }
+
+      navigate("/");
+    },
+    [isSignedIn, navigate, signOut]
+  );
+
+  const getAuthHeaders = useCallback(async () => {
+    if (jwtToken) {
+      if (isJwtExpired(jwtToken)) {
+        handleUnauthorized();
+        throw new Error("JWT_EXPIRED");
+      }
+
+      return {
+        Authorization: `Bearer ${jwtToken}`,
+        "Content-Type": "application/json",
+      };
+    }
+
+    const token = await getToken();
+    if (!token) {
+      throw new Error("JWT_EXPIRED");
+    }
+
+    return {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    };
+  }, [getToken, handleUnauthorized, jwtToken]);
+
+  const handleLogout = useCallback(() => {
+    clearStoredAuth();
+
+    if (isSignedIn) {
+      signOut({ redirectUrl: "/" });
+      return;
+    }
+
+    toast.success("You have been logged out.");
+    navigate("/");
+  }, [isSignedIn, navigate, signOut]);
+
+  return (
+    <ChatScreen
+      authReady={isLoaded}
+      isAuthenticated={Boolean(isSignedIn || jwtToken)}
+      getAuthHeaders={getAuthHeaders}
+      onUnauthorized={handleUnauthorized}
+      onLogout={handleLogout}
+      onOpenProfile={() => navigate("/profile")}
+      showProfileShortcut={Boolean(jwtToken)}
+      userName={userName}
+    />
+  );
+}
+
+function Chat() {
+  return hasClerk ? <ChatWithClerkSupport /> : <ChatWithJwtSupport />;
 }
 
 export default Chat;

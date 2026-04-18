@@ -1,11 +1,15 @@
 import { useState } from "react";
 import axios from "axios";
+import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/clerk-react";
 import { useNavigate } from "react-router-dom";
 import { FaEnvelope, FaLock, FaEye, FaEyeSlash } from "react-icons/fa";
+import { FcGoogle } from "react-icons/fc";
 import toast from "react-hot-toast";
 import { API_BASE_URL } from "../config";
 import { clearStoredAuth, setStoredAuth } from "../utils/auth";
 import "./Login.css";
+
+const hasClerk = Boolean(process.env.REACT_APP_CLERK_PUBLISHABLE_KEY);
 
 function Login() {
   const [email, setEmail] = useState("");
@@ -114,6 +118,42 @@ function Login() {
                 Forgot your password?
               </p>
             </div>
+
+            {hasClerk && (
+              <>
+                <div className="auth-divider">
+                  <span>OR</span>
+                </div>
+
+                <div className="auth-panel social-panel">
+                  <h3 className="panel-title">Continue with Google</h3>
+                  <p className="panel-copy">
+                    Use your Google account to sign in instantly without entering your password again.
+                  </p>
+
+                  <SignedOut>
+                    <SignInButton
+                      mode="modal"
+                      forceRedirectUrl="/chat"
+                      oauthFlow="popup"
+                      strategy="oauth_google"
+                    >
+                      <button className="google-btn">
+                        <FcGoogle className="google-icon" />
+                        Continue with Google
+                      </button>
+                    </SignInButton>
+                  </SignedOut>
+
+                  <SignedIn>
+                    <div className="auth-state">
+                      <UserButton afterSignOutUrl="/" />
+                      <p>Your Google account is ready.</p>
+                    </div>
+                  </SignedIn>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>
