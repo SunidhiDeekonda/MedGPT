@@ -6,6 +6,7 @@ import { FaUser, FaEnvelope, FaLock, FaEye, FaEyeSlash } from "react-icons/fa";
 import { FcGoogle } from "react-icons/fc";
 import toast from "react-hot-toast";
 import { API_BASE_URL } from "../config";
+import { clearStoredAuth } from "../utils/auth";
 import "./Signup.css";
 
 const hasClerk = Boolean(process.env.REACT_APP_CLERK_PUBLISHABLE_KEY);
@@ -56,6 +57,10 @@ function Signup() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleGoogleStart = () => {
+    clearStoredAuth();
   };
 
   return (
@@ -138,7 +143,7 @@ function Signup() {
                     oauthFlow="popup"
                     strategy="oauth_google"
                   >
-                    <button className="google-btn">
+                    <button className="google-btn" onClick={handleGoogleStart}>
                       <FcGoogle className="google-icon" />
                       Create with Google
                     </button>

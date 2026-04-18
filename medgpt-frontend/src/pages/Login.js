@@ -55,6 +55,10 @@ function Login() {
     }
   };
 
+  const handleGoogleStart = () => {
+    clearStoredAuth();
+  };
+
   return (
     <div className="login-page" onMouseMove={handleMouseMove}>
       <div className="blob blob1"></div>
@@ -138,7 +142,7 @@ function Login() {
                       oauthFlow="popup"
                       strategy="oauth_google"
                     >
-                      <button className="google-btn">
+                      <button className="google-btn" onClick={handleGoogleStart}>
                         <FcGoogle className="google-icon" />
                         Continue with Google
                       </button>

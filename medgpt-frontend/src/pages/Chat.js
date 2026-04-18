@@ -21,6 +21,7 @@ import {
 } from "../utils/auth";
 import "./Chat.css";
 
+const DEFAULT_MODEL = "llama-3.3-70b-versatile";
 const hasClerk = Boolean(process.env.REACT_APP_CLERK_PUBLISHABLE_KEY);
 
 function ChatScreen({
@@ -39,8 +40,6 @@ function ChatScreen({
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [modelOptions, setModelOptions] = useState([]);
-  const [selectedModel, setSelectedModel] = useState("llama-3.3-70b-versatile");
   const [isListening, setIsListening] = useState(false);
   const [voiceSupported, setVoiceSupported] = useState(true);
   const [activeMeta, setActiveMeta] = useState({
@@ -72,21 +71,6 @@ function ChatScreen({
     return `${title.slice(0, 56).trim()}...`;
   }, []);
 
-  const fetchModels = useCallback(async () => {
-    try {
-      const headers = await getAuthHeaders();
-      const res = await fetch(`${API_BASE_URL}/chat/models`, { headers });
-      if (!res.ok) {
-        throw new Error("Failed to load models");
-      }
-
-      const data = await res.json();
-      setModelOptions(data.models || []);
-    } catch (error) {
-      console.error(error);
-    }
-  }, [getAuthHeaders]);
-
   const fetchChats = useCallback(
     async (query = "") => {
       try {
@@ -116,7 +100,6 @@ function ChatScreen({
             title: chat.title || getChatTitle(chat.messages?.[0]?.text || "New chat"),
             messages: chat.messages,
             riskLevel: chat.riskLevel || "Unknown",
-            model: chat.model || selectedModel,
           }))
         );
       } catch (error) {
@@ -126,7 +109,7 @@ function ChatScreen({
         setChatHistory([]);
       }
     },
-    [getAuthHeaders, getChatTitle, onUnauthorized, selectedModel]
+    [getAuthHeaders, getChatTitle, onUnauthorized]
   );
 
   useEffect(() => {
@@ -139,8 +122,7 @@ function ChatScreen({
     }
 
     fetchChats();
-    fetchModels();
-  }, [authReady, fetchChats, fetchModels, isAuthenticated]);
+  }, [authReady, fetchChats, isAuthenticated]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -321,7 +303,7 @@ function ChatScreen({
       headers,
       body: JSON.stringify({
         title,
-        model: selectedModel,
+        model: DEFAULT_MODEL,
         riskLevel: activeMeta.riskLevel,
         messages: [{ sender: "user", text: firstMessage }],
       }),
@@ -347,7 +329,7 @@ function ChatScreen({
       body: JSON.stringify({
         ...(title ? { title } : {}),
         messages: rawMessages,
-        model: metaOverride.model || selectedModel,
+        model: metaOverride.model || DEFAULT_MODEL,
         riskLevel: metaOverride.riskLevel || activeMeta.riskLevel,
       }),
     });
@@ -379,7 +361,6 @@ function ChatScreen({
       const chat = await res.json();
       setMessages(chat.messages || []);
       setCurrentChatId(chat._id);
-      setSelectedModel(chat.model || "llama-3.3-70b-versatile");
       setActiveMeta((current) => ({
         ...current,
         titleSuggestion: chat.title || "",
@@ -427,7 +408,7 @@ function ChatScreen({
         {
           message: trimmedInput,
           history: historyForAI,
-          model: selectedModel,
+          model: DEFAULT_MODEL,
         },
         {
           headers: {
@@ -453,7 +434,7 @@ function ChatScreen({
 
       if (chatId) {
         await saveChatMessages(chatId, updatedRawMessages, nextMeta.titleSuggestion, {
-          model: selectedModel,
+          model: DEFAULT_MODEL,
           riskLevel: nextMeta.riskLevel,
         });
       }
@@ -669,15 +650,7 @@ function ChatScreen({
           <div className="chat-controls">
             <label className="model-switcher">
               <span>Model</span>
-              <select value={selectedModel} onChange={(event) => setSelectedModel(event.target.value)}>
-                {(modelOptions.length ? modelOptions : [
-                  { id: "llama-3.3-70b-versatile", label: "Balanced Clinical" },
-                ]).map((model) => (
-                  <option key={model.id} value={model.id}>
-                    {model.label}
-                  </option>
-                ))}
-              </select>
+              <div className="model-badge">Balanced Clinical</div>
             </label>
           </div>
         </div>
@@ -840,6 +813,18 @@ function ChatWithClerkSupport() {
   );
 
   const getAuthHeaders = useCallback(async () => {
+    if (isSignedIn) {
+      const token = await getToken();
+      if (!token) {
+        throw new Error("JWT_EXPIRED");
+      }
+
+      return {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      };
+    }
+
     if (jwtToken) {
       if (isJwtExpired(jwtToken)) {
         handleUnauthorized();
@@ -852,16 +837,7 @@ function ChatWithClerkSupport() {
       };
     }
 
-    const token = await getToken();
-    if (!token) {
-      throw new Error("JWT_EXPIRED");
-    }
-
-    return {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    };
-  }, [getToken, handleUnauthorized, jwtToken]);
+  }, [getToken, handleUnauthorized, isSignedIn, jwtToken]);
 
   const handleLogout = useCallback(() => {
     clearStoredAuth();

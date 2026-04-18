@@ -270,13 +270,16 @@ body {
   letter-spacing: 0.08em;
 }
 
-.model-switcher select {
+.model-badge {
   min-width: 180px;
   border: 1px solid rgba(14, 165, 233, 0.16);
   border-radius: 14px;
   padding: 10px 12px;
   background: rgba(255, 255, 255, 0.92);
   color: #12302b;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 10px 20px rgba(148, 163, 184, 0.08);
 }
 
 .safety-banner {

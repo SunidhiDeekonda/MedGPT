@@ -12,11 +12,8 @@ const router = express.Router();
 
 router.use(authMiddleware);
 
-const ALLOWED_MODELS = [
-  "llama-3.3-70b-versatile",
-  "llama-3.1-8b-instant",
-  "mixtral-8x7b-32768",
-];
+const DEFAULT_MODEL = "llama-3.3-70b-versatile";
+const ALLOWED_MODELS = [DEFAULT_MODEL];
 
 const getGroqClient = () => {
   if (!process.env.GROQ_API_KEY) {
@@ -89,7 +86,7 @@ router.post("/", async (req, res) => {
     const history = Array.isArray(req.body?.history) ? req.body.history : [];
     const model = ALLOWED_MODELS.includes(req.body?.model)
       ? req.body.model
-      : ALLOWED_MODELS[0];
+      : DEFAULT_MODEL;
 
     if (!message) {
       return res.status(400).json({
@@ -254,12 +251,7 @@ router.get("/models", (req, res) => {
   res.json({
     models: ALLOWED_MODELS.map((model) => ({
       id: model,
-      label:
-        model === "llama-3.3-70b-versatile"
-          ? "Balanced Clinical"
-          : model === "llama-3.1-8b-instant"
-            ? "Fast Triage"
-            : "Deep Reasoning",
+      label: "Balanced Clinical",
     })),
   });
 });
